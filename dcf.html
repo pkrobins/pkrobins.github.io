@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DCF Calculator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #0d1117;
+      color: #e6edf3;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      padding: 24px;
+      line-height: 1.6;
+    }
+    a { color: #58a6ff; }
+    h1 { margin-bottom: 8px; font-size: 1.8rem; }
+    .subtitle { color: #8b949e; margin-bottom: 24px; font-size: 0.95rem; }
+    .back-link { display: inline-block; margin-bottom: 16px; font-size: 0.9rem; }
+
+    .container { max-width: 720px; margin: 0 auto; }
+
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card h2 {
+      font-size: 1.1rem;
+      margin-bottom: 16px;
+      color: #58a6ff;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 500px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+
+    .field { display: flex; flex-direction: column; }
+    .field.full-width { grid-column: 1 / -1; }
+    .field label {
+      font-size: 0.82rem;
+      color: #8b949e;
+      margin-bottom: 4px;
+    }
+    .field input {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #e6edf3;
+      padding: 8px 10px;
+      font-size: 0.95rem;
+    }
+    .field input:focus {
+      outline: none;
+      border-color: #58a6ff;
+    }
+
+    .hint {
+      font-size: 0.78rem;
+      color: #8b949e;
+      margin-top: 2px;
+    }
+
+    button {
+      background: #238636;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 24px;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 8px;
+      width: 100%;
+    }
+    button:hover { background: #2ea043; }
+
+    /* Results */
+    .results { display: none; }
+    .results.visible { display: block; }
+
+    .big-number {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: #3fb950;
+      text-align: center;
+      margin: 12px 0 4px;
+    }
+    .big-label {
+      text-align: center;
+      color: #8b949e;
+      font-size: 0.85rem;
+      margin-bottom: 16px;
+    }
+
+    .verdict {
+      text-align: center;
+      font-size: 1rem;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+    }
+    .verdict.undervalued { background: #0b2e13; border: 1px solid #238636; color: #3fb950; }
+    .verdict.overvalued  { background: #3d1116; border: 1px solid #da3633; color: #f85149; }
+    .verdict.fair        { background: #1c1d00; border: 1px solid #9e6a03; color: #d29922; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin-top: 12px;
+    }
+    th, td {
+      padding: 6px 10px;
+      text-align: right;
+      border-bottom: 1px solid #21262d;
+    }
+    th { color: #8b949e; font-weight: 600; }
+    td:first-child, th:first-child { text-align: left; }
+    tr:hover td { background: #1c2128; }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid #21262d;
+      font-size: 0.9rem;
+    }
+    .summary-row:last-child { border-bottom: none; }
+    .summary-row .label { color: #8b949e; }
+    .summary-row .value { font-weight: 600; }
+
+    .error-msg {
+      color: #f85149;
+      font-size: 0.85rem;
+      margin-top: 8px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/index.html" class="back-link">&larr; Back</a>
+    <h1>Discounted Cash Flow Calculator</h1>
+    <p class="subtitle">Estimate the intrinsic value of a publicly listed company using a two-stage DCF model.</p>
+
+    <!-- Inputs -->
+    <div class="card">
+      <h2>Company Financials</h2>
+      <div class="form-grid">
+        <div class="field">
+          <label for="fcf">Latest Free Cash Flow ($M)</label>
+          <input type="number" id="fcf" placeholder="e.g. 5000" step="any">
+          <span class="hint">TTM free cash flow in millions</span>
+        </div>
+        <div class="field">
+          <label for="shares">Shares Outstanding (M)</label>
+          <input type="number" id="shares" placeholder="e.g. 1500" step="any">
+          <span class="hint">Diluted share count in millions</span>
+        </div>
+        <div class="field">
+          <label for="currentPrice">Current Share Price ($)</label>
+          <input type="number" id="currentPrice" placeholder="e.g. 150" step="any">
+          <span class="hint">Latest market price</span>
+        </div>
+        <div class="field">
+          <label for="cash">Net Cash / (Debt) ($M)</label>
+          <input type="number" id="cash" placeholder="e.g. 2000" step="any">
+          <span class="hint">Cash minus total debt; negative if net debt</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Growth &amp; Discount Assumptions</h2>
+      <div class="form-grid">
+        <div class="field">
+          <label for="growthHigh">Stage 1 FCF Growth Rate (%)</label>
+          <input type="number" id="growthHigh" placeholder="e.g. 15" step="any">
+          <span class="hint">High-growth phase (years 1-5)</span>
+        </div>
+        <div class="field">
+          <label for="growthLow">Stage 2 FCF Growth Rate (%)</label>
+          <input type="number" id="growthLow" placeholder="e.g. 8" step="any">
+          <span class="hint">Slower-growth phase (years 6-10)</span>
+        </div>
+        <div class="field">
+          <label for="terminalGrowth">Terminal Growth Rate (%)</label>
+          <input type="number" id="terminalGrowth" placeholder="e.g. 2.5" step="any">
+          <span class="hint">Perpetual growth after year 10</span>
+        </div>
+        <div class="field">
+          <label for="discountRate">Discount Rate / WACC (%)</label>
+          <input type="number" id="discountRate" placeholder="e.g. 10" step="any">
+          <span class="hint">Weighted avg. cost of capital</span>
+        </div>
+      </div>
+    </div>
+
+    <button id="calcBtn">Calculate Intrinsic Value</button>
+    <p class="error-msg" id="errorMsg"></p>
+
+    <!-- Results -->
+    <div class="results" id="results">
+      <div class="card">
+        <h2>Valuation Result</h2>
+        <div class="big-number" id="intrinsicPrice">--</div>
+        <div class="big-label">Estimated Intrinsic Value per Share</div>
+        <div class="verdict" id="verdict"></div>
+        <div class="summary-row">
+          <span class="label">PV of Stage 1 Cash Flows (Yrs 1-5)</span>
+          <span class="value" id="pvStage1">--</span>
+        </div>
+        <div class="summary-row">
+          <span class="label">PV of Stage 2 Cash Flows (Yrs 6-10)</span>
+          <span class="value" id="pvStage2">--</span>
+        </div>
+        <div class="summary-row">
+          <span class="label">PV of Terminal Value</span>
+          <span class="value" id="pvTerminal">--</span>
+        </div>
+        <div class="summary-row">
+          <span class="label">Total Enterprise Value</span>
+          <span class="value" id="totalEV">--</span>
+        </div>
+        <div class="summary-row">
+          <span class="label">Plus: Net Cash / (Debt)</span>
+          <span class="value" id="netCash">--</span>
+        </div>
+        <div class="summary-row">
+          <span class="label">Equity Value</span>
+          <span class="value" id="equityVal">--</span>
+        </div>
+        <div class="summary-row">
+          <span class="label">Margin of Safety</span>
+          <span class="value" id="marginSafety">--</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Projected Free Cash Flows</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Year</th>
+              <th>FCF ($M)</th>
+              <th>Growth</th>
+              <th>Discount Factor</th>
+              <th>PV of FCF ($M)</th>
+            </tr>
+          </thead>
+          <tbody id="fcfTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function fmt(n) {
+      return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function fmtPct(n) {
+      return n.toFixed(2) + "%";
+    }
+
+    document.getElementById("calcBtn").addEventListener("click", function () {
+      var errEl = document.getElementById("errorMsg");
+      errEl.style.display = "none";
+
+      var fcf          = parseFloat(document.getElementById("fcf").value);
+      var shares       = parseFloat(document.getElementById("shares").value);
+      var currentPrice = parseFloat(document.getElementById("currentPrice").value);
+      var cash         = parseFloat(document.getElementById("cash").value);
+      var gHigh        = parseFloat(document.getElementById("growthHigh").value) / 100;
+      var gLow         = parseFloat(document.getElementById("growthLow").value) / 100;
+      var gTerminal    = parseFloat(document.getElementById("terminalGrowth").value) / 100;
+      var r            = parseFloat(document.getElementById("discountRate").value) / 100;
+
+      // Validation
+      if ([fcf, shares, currentPrice, cash, gHigh, gLow, gTerminal, r].some(isNaN)) {
+        errEl.textContent = "Please fill in all fields with valid numbers.";
+        errEl.style.display = "block";
+        return;
+      }
+      if (shares <= 0) {
+        errEl.textContent = "Shares outstanding must be greater than zero.";
+        errEl.style.display = "block";
+        return;
+      }
+      if (r <= gTerminal) {
+        errEl.textContent = "Discount rate must be greater than the terminal growth rate.";
+        errEl.style.display = "block";
+        return;
+      }
+
+      // Project cash flows
+      var rows = [];
+      var currentFCF = fcf;
+      var pvStage1 = 0;
+      var pvStage2 = 0;
+
+      for (var yr = 1; yr <= 10; yr++) {
+        var g = yr <= 5 ? gHigh : gLow;
+        currentFCF = currentFCF * (1 + g);
+        var df = Math.pow(1 + r, yr);
+        var pv = currentFCF / df;
+
+        if (yr <= 5) pvStage1 += pv;
+        else pvStage2 += pv;
+
+        rows.push({ year: yr, fcf: currentFCF, g: g, df: df, pv: pv });
+      }
+
+      // Terminal value (Gordon Growth Model applied to year-10 FCF)
+      var terminalFCF = currentFCF * (1 + gTerminal);
+      var terminalValue = terminalFCF / (r - gTerminal);
+      var pvTerminalVal = terminalValue / Math.pow(1 + r, 10);
+
+      var enterpriseValue = pvStage1 + pvStage2 + pvTerminalVal;
+      var equityValue = enterpriseValue + cash;
+      var intrinsicPerShare = equityValue / shares;
+      var marginOfSafety = ((intrinsicPerShare - currentPrice) / intrinsicPerShare) * 100;
+
+      // Populate results
+      document.getElementById("intrinsicPrice").textContent = "$" + fmt(intrinsicPerShare);
+      document.getElementById("pvStage1").textContent = "$" + fmt(pvStage1) + "M";
+      document.getElementById("pvStage2").textContent = "$" + fmt(pvStage2) + "M";
+      document.getElementById("pvTerminal").textContent = "$" + fmt(pvTerminalVal) + "M";
+      document.getElementById("totalEV").textContent = "$" + fmt(enterpriseValue) + "M";
+      document.getElementById("netCash").textContent = (cash >= 0 ? "$" : "-$") + fmt(Math.abs(cash)) + "M";
+      document.getElementById("equityVal").textContent = "$" + fmt(equityValue) + "M";
+      document.getElementById("marginSafety").textContent = fmtPct(marginOfSafety);
+
+      // Verdict
+      var verdictEl = document.getElementById("verdict");
+      verdictEl.className = "verdict";
+      if (marginOfSafety >= 25) {
+        verdictEl.textContent = "Potentially Undervalued (margin of safety: " + fmtPct(marginOfSafety) + ")";
+        verdictEl.classList.add("undervalued");
+      } else if (marginOfSafety >= 0) {
+        verdictEl.textContent = "Near Fair Value (margin of safety: " + fmtPct(marginOfSafety) + ")";
+        verdictEl.classList.add("fair");
+      } else {
+        verdictEl.textContent = "Potentially Overvalued (margin of safety: " + fmtPct(marginOfSafety) + ")";
+        verdictEl.classList.add("overvalued");
+      }
+
+      // Table
+      var tbody = document.getElementById("fcfTable");
+      tbody.innerHTML = "";
+      for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
+        var tr = document.createElement("tr");
+        tr.innerHTML =
+          "<td>Year " + row.year + (row.year <= 5 ? " (S1)" : " (S2)") + "</td>" +
+          "<td>" + fmt(row.fcf) + "</td>" +
+          "<td>" + fmtPct(row.g * 100) + "</td>" +
+          "<td>" + row.df.toFixed(4) + "</td>" +
+          "<td>" + fmt(row.pv) + "</td>";
+        tbody.appendChild(tr);
+      }
+
+      // Terminal row
+      var trTerm = document.createElement("tr");
+      trTerm.style.borderTop = "2px solid #30363d";
+      trTerm.innerHTML =
+        "<td><strong>Terminal</strong></td>" +
+        "<td>" + fmt(terminalValue) + "</td>" +
+        "<td>" + fmtPct(gTerminal * 100) + " perp.</td>" +
+        "<td>" + Math.pow(1 + r, 10).toFixed(4) + "</td>" +
+        "<td>" + fmt(pvTerminalVal) + "</td>";
+      tbody.appendChild(trTerm);
+
+      document.getElementById("results").classList.add("visible");
+      document.getElementById("results").scrollIntoView({ behavior: "smooth" });
+    });
+  </script>
+</body>
+</html>
